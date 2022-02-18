@@ -81,7 +81,7 @@ def query():
     # TODO: Replace me with an appropriate call to OpenSearch
     # Postprocess results here if you so desire
 
-    print(response)
+    # print(response)
     if error is None:
         return render_template("search_results.jinja2", query=user_query, search_response=response,
                                display_filters=display_filters, applied_filters=applied_filters,
@@ -92,17 +92,42 @@ def query():
 
 def create_query(user_query, filters, sort="_score", sortDir="desc"):
     print("Query: {} Filters: {} Sort: {}".format(user_query, filters, sort))
-    query_obj = {
-        'size': 10,
-        "query": {
-            "multi_match": {
-                "query": user_query,
-                "minimum_should_match": "50%"
+
+    if user_query == "*":
+        query_obj = {
+            'size': 10,
+            "query": {
+                "match_all": {
+                }
+            },
+            "aggs": {
                 
             }
-        },
-        "aggs": {
-            #TODO: FILL ME IN
         }
-    }
+    else:
+         query_obj = {
+            'size': 10,
+            "query": {
+                "multi_match": {
+                    "query": user_query,
+                    "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"],                    
+                    # "minimum_should_match": "50%"
+                    
+                }
+            },
+            "aggs": {
+                "regularPrice": {
+                    "range": {
+                        "field": "regularPrice",
+                        "ranges": [
+                        { "key": "$", "to": 100.0 },
+                        { "from": 100.0, "to": 200.0 },
+                        { "from": 300.0 }
+                        ]
+                    }
+                }
+            }
+        }
+
+    
     return query_obj
