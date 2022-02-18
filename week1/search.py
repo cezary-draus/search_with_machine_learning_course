@@ -124,7 +124,10 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
                     { "key": "$$$", "from": 30.0, "to": 1000.0 }
                 ]
             }
-        }    
+        },
+        "missing_image": {
+            "missing": { "field": "image.keyword" }        
+        }
     }
 
     if user_query == "*":
