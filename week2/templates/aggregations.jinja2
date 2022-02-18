@@ -16,6 +16,8 @@
         {% if agg.doc_count > 0 %}
           <div class="aggregation">
             <div>{{ agg.key }}: {{ agg.doc_count }}</div>
+
+            <div>{{ agg.key }}: {{ agg.doc_count }}</div>
           </div>{% endif %}
       {% endfor %}
     {% endif %}

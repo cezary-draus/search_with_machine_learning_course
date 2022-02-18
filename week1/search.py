@@ -21,7 +21,9 @@ def process_filters(filters_input):
     applied_filters = ""
     for filter in filters_input:
         type = request.args.get(filter + ".type")
+        key = request.args.get(filter + ".key")
         display_name = request.args.get(filter + ".displayName", filter)
+        name = request.args.get("filter.name")
         #
         # We need to capture and return what filters are already applied so they can be automatically added to any existing links we display in aggregations.jinja2
         applied_filters += "&filter.name={}&{}.type={}&{}.displayName={}".format(filter, filter, type, filter,
@@ -29,7 +31,19 @@ def process_filters(filters_input):
         #TODO: IMPLEMENT AND SET filters, display_filters and applied_filters.
         # filters get used in create_query below.  display_filters gets used by display_filters.jinja2 and applied_filters gets used by aggregations.jinja2 (and any other links that would execute a search.)
         if type == "range":
-            pass
+            rangeFilter = {
+                "range": {
+                    
+                }
+            }
+            rangeFilter["range"][name] = {
+            
+                        "gt": request.args.get(filter + ".from"),
+                        "lt": request.args.get(filter + ".to")
+                      
+            }
+            filters.append(rangeFilter)
+            
         elif type == "terms":
             pass #TODO: IMPLEMENT
     print("Filters: {}".format(filters))
@@ -69,9 +83,15 @@ def query():
         if filters_input:
             (filters, display_filters, applied_filters) = process_filters(filters_input)
 
+        # print("filters")
+        # print(filters)
+        # print(display_filters)
+        # print(applied_filters)
+
         query_obj = create_query(user_query, filters, sort, sortDir)
     else:
         query_obj = create_query("*", [], sort, sortDir)
+
 
     print("query obj: {}".format(query_obj))
     response = opensearch.search(
@@ -93,41 +113,52 @@ def query():
 def create_query(user_query, filters, sort="_score", sortDir="desc"):
     print("Query: {} Filters: {} Sort: {}".format(user_query, filters, sort))
 
+
+    aggs = {
+        "regularPrice": {
+            "range": {
+                "field": "regularPrice",
+                    "ranges": [
+                    { "key": "$", "from": 0.0, "to": 10.0 },
+                    { "key": "$$", "from": 10.0, "to": 20.0 },
+                    { "key": "$$$", "from": 30.0, "to": 1000.0 }
+                ]
+            }
+        }    
+    }
+
     if user_query == "*":
         query_obj = {
             'size': 10,
             "query": {
-                "match_all": {
-                }
-            },
-            "aggs": {
-                
-            }
-        }
-    else:
-         query_obj = {
-            'size': 10,
-            "query": {
-                "multi_match": {
-                    "query": user_query,
-                    "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"],                    
-                    # "minimum_should_match": "50%"
-                    
-                }
-            },
-            "aggs": {
-                "regularPrice": {
-                    "range": {
-                        "field": "regularPrice",
-                        "ranges": [
-                        { "key": "$", "to": 100.0 },
-                        { "from": 100.0, "to": 200.0 },
-                        { "from": 300.0 }
-                        ]
+                "bool": {
+                    "must": {
+                        "match_all": {}
                     }
                 }
             }
         }
+    else:
+         query_obj = {
+            "size": 10,
+            "query": {
+                "bool": {
+                    "must": {
+                        "multi_match": {
+                            "query": user_query,
+                            "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"],                    
+                            # "minimum_should_match": "50%"
+                    
+                        }
+                    }
+                    
+                }
+            }
+            
+        }
+
+    query_obj['aggs'] = aggs
+    query_obj['query']["bool"]["filter"] = filters
 
     
     return query_obj
