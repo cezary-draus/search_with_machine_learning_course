@@ -5,6 +5,9 @@ from flask import (
     Blueprint, redirect, render_template, request, url_for
 )
 
+import json
+
+
 from week1.opensearch import get_opensearch
 
 bp = Blueprint('search', __name__, url_prefix='/search')
@@ -24,6 +27,8 @@ def process_filters(filters_input):
         key = request.args.get(filter + ".key")
         display_name = request.args.get(filter + ".displayName", filter)
         name = request.args.get("filter.name")
+
+
         #
         # We need to capture and return what filters are already applied so they can be automatically added to any existing links we display in aggregations.jinja2
         applied_filters += "&filter.name={}&{}.type={}&{}.displayName={}".format(filter, filter, type, filter,
@@ -38,14 +43,22 @@ def process_filters(filters_input):
             }
             rangeFilter["range"][name] = {
             
-                        "gt": request.args.get(filter + ".from"),
-                        "lt": request.args.get(filter + ".to")
+                        "from": request.args.get(filter + ".from"),
+                        "to": request.args.get(filter + ".to")
                       
             }
             filters.append(rangeFilter)
             
         elif type == "terms":
-            pass #TODO: IMPLEMENT
+            termsFilter = {
+                "terms": {
+                    
+                }
+            }
+            termsFilter["terms"][name + ".keyword"] = [request.args.get(filter + ".key")]
+                      
+            
+            filters.append(termsFilter)
     print("Filters: {}".format(filters))
 
     return filters, display_filters, applied_filters
@@ -93,7 +106,8 @@ def query():
         query_obj = create_query("*", [], sort, sortDir)
 
 
-    print("query obj: {}".format(query_obj))
+    
+    print(json.dumps(query_obj, indent=4, sort_keys=True))
     response = opensearch.search(
         body = query_obj,
         index = "bbuy_products"
@@ -127,6 +141,14 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
         },
         "missing_image": {
             "missing": { "field": "image.keyword" }        
+        },
+        "department": {
+            "terms" : {
+                "field": "department.keyword",
+                "order": { 
+                    "_count": "desc" 
+                }
+            }
         }
     }
 
