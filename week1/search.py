@@ -171,8 +171,9 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
                 }
             }
         }
+        query_obj['query']["bool"]["filter"] = filters
     else:
-         query_obj = {
+        query_obj = {
             "size": 10,
             "query": {
                 "function_score": {
@@ -190,7 +191,6 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
                                     "query": user_query
                                 }
                             },
-                            
                             "should": {
                                 "match_phrase": {
                                     "name": {
@@ -201,32 +201,30 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
                                     }                                    
                                 }
                             }
-                        
                         }
                     },
                     "boost_mode": "multiply",
                     "score_mode": "avg",
-                    
                     "functions": [
                     {
                         "field_value_factor": {
-                        "field": "salesRankLongTerm",
-                        "modifier": "reciprocal",
-                        "missing": 1000000000
+                            "field": "salesRankLongTerm",
+                            "modifier": "reciprocal",
+                            "missing": 1000000000
                         }
                     },
                     {
                         "field_value_factor": {
-                        "field": "salesRankMediumTerm",
-                        "modifier": "reciprocal",
-                        "missing": 1000000000
+                            "field": "salesRankMediumTerm",
+                            "modifier": "reciprocal",
+                            "missing": 1000000000
                         }
                     },
                     {
                         "field_value_factor": {
-                        "field": "salesRankShortTerm",
-                        "modifier": "reciprocal",
-                        "missing": 1000000000
+                            "field": "salesRankShortTerm",
+                            "modifier": "reciprocal",
+                            "missing": 1000000000
                         }
                     }
                     
@@ -237,12 +235,10 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
             
         }
 
+        query_obj['query']["function_score"]['query']["bool"]["filter"] = filters
+
     query_obj['aggs'] = aggs
-    query_obj['query']["function_score"]['query']["bool"]["filter"] = filters
-
-
-    sortBy = {}
-    
+    sortBy = {}    
     sortBy[sort] = sortDir
     
     query_obj["sort"] = [sortBy]
