@@ -26,39 +26,47 @@ def process_filters(filters_input):
         type = request.args.get(filter + ".type")
         key = request.args.get(filter + ".key")
         display_name = request.args.get(filter + ".displayName", filter)
-        name = request.args.get("filter.name")
+        
 
 
         #
         # We need to capture and return what filters are already applied so they can be automatically added to any existing links we display in aggregations.jinja2
         applied_filters += "&filter.name={}&{}.type={}&{}.displayName={}".format(filter, filter, type, filter,
                                                                                  display_name)
-        #TODO: IMPLEMENT AND SET filters, display_filters and applied_filters.
+
         # filters get used in create_query below.  display_filters gets used by display_filters.jinja2 and applied_filters gets used by aggregations.jinja2 (and any other links that would execute a search.)
         if type == "range":
+            fromFilter = request.args.get(filter + ".from")
+            toFilter = request.args.get(filter + ".to")
             rangeFilter = {
                 "range": {
                     
                 }
             }
-            rangeFilter["range"][name] = {
+            rangeFilter["range"][filter] = {
             
-                        "from": request.args.get(filter + ".from"),
-                        "to": request.args.get(filter + ".to")
+                        "from": fromFilter,
+                        "to": toFilter
                       
             }
             filters.append(rangeFilter)
+            display_filters.append("{} ({} - {})".format(display_name, fromFilter, toFilter))
+            applied_filters += "&{}.from={}".format(filter, fromFilter)
+            applied_filters += "&{}.to={}".format(filter, toFilter)
+
             
         elif type == "terms":
+            filterValue = request.args.get(filter + ".key")
             termsFilter = {
                 "terms": {
                     
                 }
             }
-            termsFilter["terms"][name + ".keyword"] = [request.args.get(filter + ".key")]
-                      
-            
+            termsFilter["terms"][filter + ".keyword"] = [filterValue]
             filters.append(termsFilter)
+            display_filters.append("{}: {}".format(display_name, filterValue))
+
+
     print("Filters: {}".format(filters))
 
     return filters, display_filters, applied_filters
@@ -167,23 +175,76 @@ def create_query(user_query, filters, sort="_score", sortDir="desc"):
          query_obj = {
             "size": 10,
             "query": {
-                "bool": {
-                    "must": {
-                        "multi_match": {
-                            "query": user_query,
-                            "fields": ["name^100", "shortDescription^50", "longDescription^10", "department"],                    
-                            # "minimum_should_match": "50%"
+                "function_score": {
+                    "query": {
+                        "bool": {
+                            "filter": [],
+                            "must": {
+                                "multi_match": {
+                                    "fields": [
+                                        "name^100",
+                                        "shortDescription^50",
+                                        "longDescription^10",
+                                        "department"
+                                    ],
+                                    "query": user_query
+                                }
+                            },
+                            
+                            "should": {
+                                "match_phrase": {
+                                    "name": {
+                                        "query":  user_query,
+                                        "analyzer": "english",
+                                        "boost": 200,                                        
+                                        "slop": 1                                    
+                                    }                                    
+                                }
+                            }
+                        
+                        }
+                    },
+                    "boost_mode": "multiply",
+                    "score_mode": "avg",
                     
+                    "functions": [
+                    {
+                        "field_value_factor": {
+                        "field": "salesRankLongTerm",
+                        "modifier": "reciprocal",
+                        "missing": 1000000000
+                        }
+                    },
+                    {
+                        "field_value_factor": {
+                        "field": "salesRankMediumTerm",
+                        "modifier": "reciprocal",
+                        "missing": 1000000000
+                        }
+                    },
+                    {
+                        "field_value_factor": {
+                        "field": "salesRankShortTerm",
+                        "modifier": "reciprocal",
+                        "missing": 1000000000
                         }
                     }
                     
+                    ]
                 }
+
             }
             
         }
 
     query_obj['aggs'] = aggs
-    query_obj['query']["bool"]["filter"] = filters
+    query_obj['query']["function_score"]['query']["bool"]["filter"] = filters
 
+
+    sortBy = {}
+    
+    sortBy[sort] = sortDir
+    
+    query_obj["sort"] = [sortBy]
     
     return query_obj

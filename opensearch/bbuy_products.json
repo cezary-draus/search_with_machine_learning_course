@@ -37,7 +37,17 @@
       "regularPrice": {
         "type": "scaled_float",
         "scaling_factor": 100
+      },
+      "salesRankLongTerm": {
+        "type": "integer"        
+      },
+      "salesRankMediumTerm": {
+        "type": "integer"        
+      },
+      "salesRankShortTerm": {
+        "type": "integer"        
       }
+
     }
   }
 }
