@@ -213,6 +213,19 @@ class DataPrepper:
         print("The following queries produced no results: %s" % no_results)
         return features_df
 
+
+    def __extract_sltr_feature(self, doc, feature_name):
+        for ltr_log in doc["fields"]["_ltrlog"]:
+            for feature in ltr_log["log_entry"]:
+                if feature["name"] == feature_name:
+                    value = feature.get("value")
+                    if value == None:
+                        
+                        return 0.0
+                    else:
+                        return value
+
+
     # Features look like:
     # {'log_entry': [{'name': 'title_match',
     #          'value': 7.221403},
@@ -232,21 +245,34 @@ class DataPrepper:
                                                 size=len(query_doc_ids), terms_field=terms_field)
         ##### Step Extract LTR Logged Features:
         # IMPLEMENT_START --
-        print("IMPLEMENT ME: __log_ltr_query_features: Extract log features out of the LTR:EXT response and place in a data frame")
+        response = self.opensearch.search(body=log_query, index=self.index_name)
+        # print(response)
+        res_docs = {}
+        for res_doc in response["hits"]["hits"]:
+            res_docs[res_doc["_id"]] = res_doc
+
+        
+        
         # Loop over the hits structure returned by running `log_query` and then extract out the features from the response per query_id and doc id.  Also capture and return all query/doc pairs that didn't return features
         # Your structure should look like the data frame below
         feature_results = {}
         feature_results["doc_id"] = []  # capture the doc id so we can join later
         feature_results["query_id"] = []  # ^^^
         feature_results["sku"] = []
-        feature_results["name_match"] = []
-        rng = np.random.default_rng(12345)
+        feature_results["name_match"] = []        
         for doc_id in query_doc_ids:
+
+            res_doc = res_docs.get(str(doc_id))
+            if res_doc == None:                
+                continue
             feature_results["doc_id"].append(doc_id)  # capture the doc id so we can join later
+            
             feature_results["query_id"].append(query_id)
-            feature_results["sku"].append(doc_id)  
-            feature_results["name_match"].append(rng.random())
+            feature_results["sku"].append(res_doc["_source"]["sku"][0])  
+            feature_results["name_match"].append(self.__extract_sltr_feature(res_doc, "name_match"))
         frame = pd.DataFrame(feature_results)
+        
+        
         return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
         # IMPLEMENT_END
 
