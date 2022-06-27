@@ -247,6 +247,18 @@ def create_query(user_query, click_prior_query, filters, sort="_score", sortDir=
                         "script_score": {
                             "script": "0.0001"
                         }
+                    },
+                    {
+                        "field_value_factor": {
+                            "field": "customerReviewAverage",
+                            "missing": 0
+                        }
+                    },
+                    {
+                        "field_value_factor": {
+                            "field": "customerReviewCount",
+                            "missing": 0
+                        }
                     }
                 ]
 

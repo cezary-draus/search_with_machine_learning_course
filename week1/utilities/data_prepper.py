@@ -251,7 +251,8 @@ class DataPrepper:
         for res_doc in response["hits"]["hits"]:
             res_docs[res_doc["_id"]] = res_doc
 
-        
+        # print(log_query)
+        # print(res_doc)
         
         # Loop over the hits structure returned by running `log_query` and then extract out the features from the response per query_id and doc id.  Also capture and return all query/doc pairs that didn't return features
         # Your structure should look like the data frame below
@@ -260,6 +261,9 @@ class DataPrepper:
         feature_results["query_id"] = []  # ^^^
         feature_results["sku"] = []
         feature_results["name_match"] = []        
+        feature_results["name_phrase_match"] = []        
+        feature_results["customerReviewAverage"] = []        
+        feature_results["customerReviewCount"] = []        
         for doc_id in query_doc_ids:
 
             res_doc = res_docs.get(str(doc_id))
@@ -270,9 +274,15 @@ class DataPrepper:
             feature_results["query_id"].append(query_id)
             feature_results["sku"].append(res_doc["_source"]["sku"][0])  
             feature_results["name_match"].append(self.__extract_sltr_feature(res_doc, "name_match"))
+            feature_results["name_phrase_match"].append(self.__extract_sltr_feature(res_doc, "name_phrase_match"))
+            feature_results["customerReviewAverage"].append(self.__extract_sltr_feature(res_doc, "customerReviewAverage"))
+            feature_results["customerReviewCount"].append(self.__extract_sltr_feature(res_doc, "customerReviewCount"))
+            
         frame = pd.DataFrame(feature_results)
         
-        
+        # print(feature_results)
+        # raise Exception("Debug :D")
+
         return frame.astype({'doc_id': 'int64', 'query_id': 'int64', 'sku': 'int64'})
         # IMPLEMENT_END
 
